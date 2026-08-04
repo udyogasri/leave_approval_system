@@ -2,10 +2,12 @@ package com.app.leaveapprovalsystem.service;
 
 import com.app.leaveapprovalsystem.dto.*;
 import com.app.leaveapprovalsystem.entity.Role;
+import com.app.leaveapprovalsystem.entity.RoleName;
 import com.app.leaveapprovalsystem.entity.User;
 import com.app.leaveapprovalsystem.exception.InvalidCredentialsException;
 import com.app.leaveapprovalsystem.exception.UnauthorizedException;
 import com.app.leaveapprovalsystem.mapper.UserMapper;
+import com.app.leaveapprovalsystem.repository.RoleRepository;
 import com.app.leaveapprovalsystem.repository.UserRepository;
 import com.app.leaveapprovalsystem.security.JwtUtil;
 import com.app.leaveapprovalsystem.util.EmployeeCodeGenerator;
@@ -28,6 +30,7 @@ import java.time.LocalDate;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
@@ -42,7 +45,7 @@ public class AuthService {
             throw new IllegalArgumentException("Role is required. Allowed: EMPLOYEE, MANAGER, ADMIN");
         }
 
-        Role role = parseRole(dto.getRole());
+        Role role = findRole(dto.getRole());
 
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Email '" + dto.getEmail() + "' is already registered");
@@ -51,16 +54,16 @@ public class AuthService {
         // ADMIN registration:
         //   - if no admin exists yet → allowed for anyone (bootstrap)
         //   - if an admin exists    → requires an authenticated ADMIN token
-        if (role == Role.ADMIN) {
-            if (userRepository.existsByRole(Role.ADMIN)) {
-                requireAdminToken(role);
+        if (role.getName() == RoleName.ADMIN) {
+            if (userRepository.existsByRole_Name(RoleName.ADMIN)) {
+                requireAdminToken(role.getName());
             }
             // else: first admin — allow through without a token
         }
 
         // MANAGER registration always requires an authenticated ADMIN token
-        if (role == Role.MANAGER) {
-            requireAdminToken(role);
+        if (role.getName() == RoleName.MANAGER) {
+            requireAdminToken(role.getName());
         }
 
         User.UserBuilder builder = User.builder()
@@ -72,12 +75,12 @@ public class AuthService {
                 .role(role)
                 .enabled(true);
 
-        if (role == Role.EMPLOYEE || role == Role.MANAGER) {
+        if (role.getName() == RoleName.EMPLOYEE || role.getName() == RoleName.MANAGER) {
             if (dto.getDepartment() == null || dto.getDepartment().isBlank()) {
-                throw new IllegalArgumentException("Department is required for role " + role);
+                throw new IllegalArgumentException("Department is required for role " + role.getName());
             }
             if (dto.getDesignation() == null || dto.getDesignation().isBlank()) {
-                throw new IllegalArgumentException("Designation is required for role " + role);
+                throw new IllegalArgumentException("Designation is required for role " + role.getName());
             }
             builder.employeeCode(EmployeeCodeGenerator.generate(dto.getDepartment()))
                    .department(dto.getDepartment())
@@ -86,7 +89,7 @@ public class AuthService {
         }
 
         User user = userRepository.save(builder.build());
-        log.info("User registered: userId={}, role={}", user.getId(), role);
+        log.info("User registered: userId={}, role={}", user.getId(), role.getName());
         return userMapper.toResponse(user);
     }
 
@@ -107,18 +110,18 @@ public class AuthService {
         User user = (User) authentication.getPrincipal();
         String token = jwtUtil.generateToken(user);
 
-        log.info("Login successful: userId={}, role={}", user.getId(), user.getRole());
+        log.info("Login successful: userId={}, role={}", user.getId(), user.getRole().getName());
 
         return LoginResponseDTO.builder()
                 .accessToken(token)
                 .userId(user.getId())
-                .role(user.getRole().name())
+                .role(user.getRole().getName().name())
                 .build();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private void requireAdminToken(Role role) {
+    private void requireAdminToken(RoleName role) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isAdmin = auth != null && auth.isAuthenticated()
                 && auth.getAuthorities().stream()
@@ -129,12 +132,15 @@ public class AuthService {
         }
     }
 
-    private Role parseRole(String roleStr) {
+    private Role findRole(String roleStr) {
+        RoleName roleName;
         try {
-            return Role.valueOf(roleStr.toUpperCase());
+            roleName = RoleName.valueOf(roleStr.toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
                     "Invalid role '" + roleStr + "'. Allowed: EMPLOYEE, MANAGER, ADMIN");
         }
+        return roleRepository.findByName(roleName)
+                .orElseThrow(() -> new IllegalStateException("Role not found in DB: " + roleName));
     }
 }

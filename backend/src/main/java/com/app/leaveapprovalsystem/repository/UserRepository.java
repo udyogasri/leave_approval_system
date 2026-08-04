@@ -1,6 +1,6 @@
 package com.app.leaveapprovalsystem.repository;
 
-import com.app.leaveapprovalsystem.entity.Role;
+import com.app.leaveapprovalsystem.entity.RoleName;
 import com.app.leaveapprovalsystem.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +14,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    boolean existsByRole(Role role);
+    boolean existsByRole_Name(RoleName name);
 
-    Page<User> findByRole(Role role, Pageable pageable);
+    Page<User> findByRole_Name(RoleName name, Pageable pageable);
 }

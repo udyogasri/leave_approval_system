@@ -1,6 +1,6 @@
 package com.app.leaveapprovalsystem.entity;
 
-public enum Role {
+public enum RoleName {
     ADMIN,
     MANAGER,
     EMPLOYEE
