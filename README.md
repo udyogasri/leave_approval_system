@@ -31,6 +31,7 @@ src/
 │   ├── java/com/app/leaveapprovalsystem/
 │   │   ├── config/
 │   │   │   ├── SecurityConfig.java          # Spring Security + JWT filter chain
+│   │   │   ├── DataInitializer.java         # Seeds ADMIN/MANAGER/EMPLOYEE roles on startup
 │   │   │   └── SwaggerConfig.java           # OpenAPI / Swagger config
 │   │   ├── controller/
 │   │   │   ├── AuthController.java          # /api/auth — register, login, me
@@ -45,7 +46,8 @@ src/
 │   │   ├── entity/
 │   │   │   ├── User.java                    # Single entity for ALL roles (ADMIN/MANAGER/EMPLOYEE)
 │   │   │   ├── LeaveRequest.java            # Leave request entity
-│   │   │   └── Role.java                    # Enum: ADMIN, MANAGER, EMPLOYEE
+│   │   │   ├── Role.java                    # JPA entity → roles table (id, name)
+│   │   │   └── RoleName.java                # Enum: ADMIN, MANAGER, EMPLOYEE (compile-time safety)
 │   │   ├── exception/                       # Custom exceptions + GlobalExceptionHandler
 │   │   ├── mapper/                          # MapStruct mappers (entity → DTO)
 │   │   ├── repository/                      # Spring Data JPA repositories
@@ -69,9 +71,19 @@ src/
 
 ## Database Schema
 
-All users share a **single table** (`system_users`). Profile columns are `NULL` for ADMIN role.
+Three application-managed tables are created automatically by Hibernate on first startup.
+
+### roles
+Seeded automatically at startup by `DataInitializer`. Never modified at runtime.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | BIGINT PK | Auto-increment |
+| name | VARCHAR(20) UNIQUE | `ADMIN`, `MANAGER`, or `EMPLOYEE` |
 
 ### system_users
+All users share a **single table**. Profile columns are `NULL` for ADMIN role. `role_id` is a FK → `roles`.
+
 | Column | Type | ADMIN | MANAGER | EMPLOYEE |
 |---|---|---|---|---|
 | id | BIGINT PK | ✓ | ✓ | ✓ |
@@ -79,13 +91,15 @@ All users share a **single table** (`system_users`). Profile columns are `NULL` 
 | email | VARCHAR UNIQUE | ✓ | ✓ | ✓ |
 | password | VARCHAR (BCrypt) | ✓ | ✓ | ✓ |
 | phone_number | VARCHAR | ✓ | ✓ | ✓ |
-| role | ADMIN / MANAGER / EMPLOYEE | ✓ | ✓ | ✓ |
+| role_id | FK → roles | ✓ | ✓ | ✓ |
 | enabled | BOOLEAN | ✓ | ✓ | ✓ |
 | employee_code | VARCHAR(20) UNIQUE | NULL | ✓ auto | ✓ auto |
 | department | VARCHAR | NULL | ✓ | ✓ |
 | designation | VARCHAR | NULL | ✓ | ✓ |
 | joining_date | DATE | NULL | ✓ today | ✓ today |
 | manager_id | FK → system_users | NULL | NULL | set by Admin |
+| created_at | TIMESTAMP | ✓ | ✓ | ✓ |
+| updated_at | TIMESTAMP | ✓ | ✓ | ✓ |
 
 ### leave_requests
 | Column | Type | Notes |
@@ -100,6 +114,7 @@ All users share a **single table** (`system_users`). Profile columns are `NULL` 
 | approved_by | VARCHAR | Manager's email |
 | notification_sent | BOOLEAN | `true` after employee acknowledges |
 | process_instance_id | VARCHAR | Camunda process instance ID |
+| applied_at / updated_at | TIMESTAMP | Audit timestamps |
 
 > Camunda also auto-creates ~50 `ACT_*` tables on first startup for its own engine.
 

@@ -1,7 +1,7 @@
 package com.app.leaveapprovalsystem.controller;
 
 import com.app.leaveapprovalsystem.dto.*;
-import com.app.leaveapprovalsystem.entity.Role;
+import com.app.leaveapprovalsystem.entity.RoleName;
 import com.app.leaveapprovalsystem.entity.User;
 import com.app.leaveapprovalsystem.service.LeaveService;
 import com.app.leaveapprovalsystem.service.UserService;
@@ -45,7 +45,7 @@ public class UserController {
             @PathVariable String role,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponseDTO.success("Users retrieved",
-                userService.getUsersByRole(Role.valueOf(role.toUpperCase()), pageable)));
+                userService.getUsersByRole(RoleName.valueOf(role.toUpperCase()), pageable)));
     }
 
     @GetMapping("/{id}")

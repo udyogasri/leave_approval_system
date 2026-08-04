@@ -39,8 +39,8 @@ public class User implements UserDetails {
     @Column(length = 15)
     private String phoneNumber;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
     @Column(nullable = false)
@@ -85,7 +85,7 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.getName().name()));
     }
 
     @Override public String getUsername()                { return email; }

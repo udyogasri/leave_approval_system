@@ -1,7 +1,7 @@
 package com.app.leaveapprovalsystem.service;
 
 import com.app.leaveapprovalsystem.dto.*;
-import com.app.leaveapprovalsystem.entity.Role;
+import com.app.leaveapprovalsystem.entity.RoleName;
 import com.app.leaveapprovalsystem.entity.User;
 import com.app.leaveapprovalsystem.exception.UserNotFoundException;
 import com.app.leaveapprovalsystem.mapper.UserMapper;
@@ -27,8 +27,8 @@ public class UserService {
         return userRepository.findAll(pageable).map(userMapper::toResponse);
     }
 
-    public Page<UserResponseDTO> getUsersByRole(Role role, Pageable pageable) {
-        return userRepository.findByRole(role, pageable).map(userMapper::toResponse);
+    public Page<UserResponseDTO> getUsersByRole(RoleName roleName, Pageable pageable) {
+        return userRepository.findByRole_Name(roleName, pageable).map(userMapper::toResponse);
     }
 
     public UserResponseDTO getUserById(Long id) {
